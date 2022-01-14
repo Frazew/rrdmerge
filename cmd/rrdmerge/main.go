@@ -30,6 +30,7 @@ func main() {
 	rrdB := flag.String("b", "", "The second file/folder to merge to (required)")
 	common := flag.Bool("common", false, "Merge only files that are common to both sources when merging folders (optional)")
 	noSkip := flag.Bool("noSkip", false, "Do not skip files with an extension other that .rrd (optional)")
+	daemonOpt := flag.String("d", "", "Flush the rrd files with the given rrdcached daemon before merging (optional)")
 	concurrency := flag.Int("t", 8, "Run this many parallel merger jobs when processing a directory (optional)")
 
 	flag.Parse()
@@ -54,6 +55,7 @@ func main() {
 							Concurrency: *concurrency,
 							Common:      *common,
 							NoSkip:      *noSkip,
+							DaemonOpt:   *daemonOpt,
 						}
 						start := time.Now()
 						mergeSpec.DoMerge()

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
 	"github.com/scaleway/rrdmerge/internal/rrd"
 	"github.com/scaleway/rrdmerge/internal/rrdtool"
 )
@@ -49,6 +51,7 @@ type MergeSpec struct {
 	Concurrency int
 	Common      bool
 	NoSkip      bool
+	DaemonOpt   string
 }
 
 func (spec MergeSpec) String() string {
@@ -111,7 +114,9 @@ func (spec MergeSpec) mergeFolder() error {
 							continue
 						}
 					} else { // Simple copy since the target does not exist
-						toCopy <- filePair{src: fileA, dst: fileB}
+						if !spec.Common {
+							toCopy <- filePair{src: fileA, dst: fileB}
+						}
 					}
 				}
 			}
@@ -129,7 +134,7 @@ func (spec MergeSpec) mergeFolder() error {
 		go func() {
 			defer wgMerger.Done()
 			for pair := range toMerge {
-				merge(pair.src, pair.dst)
+				merge(pair.src, pair.dst, spec)
 			}
 		}()
 	}
@@ -143,6 +148,7 @@ func (spec MergeSpec) mergeFolder() error {
 }
 
 func (spec MergeSpec) mergeFile() error {
+	merge(spec.RrdA, spec.RrdB, spec)
 	return nil
 }
 
@@ -173,60 +179,103 @@ func (spec MergeSpec) isValidFile(file string) (string, error) {
 	}
 }
 
-func merge(src string, dst string) {
-	rrdA, err := rrdtool.Load(src)
+func loadRrd(path string) (*rrd.Rrd, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	rrdPtr := rrd.NewRrd()
+	return rrdPtr, rrdPtr.Read(kaitai.NewStream(file), rrdPtr, rrdPtr)
+}
+
+func merge(src string, dst string, spec MergeSpec) {
+	if spec.DaemonOpt != "" {
+		err := rrdtool.Tune(dst, spec.DaemonOpt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to flush rrd file %s: %s\n", src, err)
+			return
+		}
+	}
+	rrdA, err := loadRrd(src)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load rrd file %s: %s\n", src, err)
 		return
 	}
 
-	rrdB, err := rrdtool.Load(dst)
+	rrdB, err := loadRrd(dst)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load rrd file %s: %s\n", dst, err)
 		return
 	}
 
-	skipSteps := int(rrdB.Lastupdate-rrdA.Lastupdate) / 300
-	if skipSteps > 0 {
-		skipSteps--
-	}
-
-	if skipSteps < 0 {
-		fmt.Fprintf(os.Stderr, "Failed to merge rrd files %s and %s: B has an older lastupdate value than A, maybe reverse them?\n", src, dst)
-		return
-	}
-
-	if len(rrdA.Ds) != len(rrdB.Ds) {
+	if rrdA.Header.DsCount != rrdB.Header.DsCount {
 		fmt.Fprintf(os.Stderr, "Failed to merge rrd files %s and %s: they don't have the same number of DS\n", src, dst)
 		return
 	}
 
-	rraAMapping := make(map[rrdMapping]rrd.Rra, len(rrdA.Rra))
-
-	for _, rraA := range rrdA.Rra {
-		// We only support the CF_AVERAGE, CF_MAXIMUM, CF_MINIMUM, and CF_LAST functions when unmarshalling
-		rraAMapping[rrdMapping{rraA.Cf, rraA.PdpPerRow, rraA.Params.Xff}] = rraA
+	// We merge into the newest rrd
+	if rrdA.LiveHead.LastUpdate > rrdB.LiveHead.LastUpdate {
+		rrdA, rrdB = rrdB, rrdA
 	}
-	for _, rraB := range rrdB.Rra {
-		if rraA, ok := rraAMapping[rrdMapping{rraB.Cf, rraB.PdpPerRow, rraB.Params.Xff}]; ok {
-			rowALength := len(rraA.Database.Row)
-			for i, row := range rraB.Database.Row {
-				if i+skipSteps/rraA.PdpPerRow >= rowALength {
-					break
-				}
-				for j, v := range row.V {
-					if v == "NaN" && rraA.Database.Row[i].V[j] != "NaN" { // If we have a value, let's not override it with NaN
-						row.V[j] = rraA.Database.Row[i+skipSteps/rraA.PdpPerRow].V[j]
-					}
+
+	stepsDifference := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep)
+
+	for rraIdx, rra := range rrdB.RraDataStore {
+		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
+			fmt.Fprintf(os.Stderr, "Not merging data in RRA %d in %s because it has already rolled over\n", rraIdx, src)
+			continue
+		}
+
+		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate)/int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount) + 1
+
+		k := 0
+		startFrom := int(rrdA.RraPtrStore[rraIdx])
+		oldIndex := startFrom - k
+
+		totalRecovered := 0
+		for i := int(rrdB.RraPtrStore[rraIdx]) - timeShift; i >= 0; i-- {
+			oldIndex = startFrom - k
+
+			if totalRecovered >= int(rrdA.RraStore[rraIdx].RowCount) {
+				break
+			}
+
+			for j := range rra.Row[i].Values {
+				if !math.IsNaN(rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]) {
+					rrdB.RraDataStore[rraIdx].Row[i].Values[j] = rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]
 				}
 			}
-		} else {
-			fmt.Fprintf(os.Stderr, "Failed to find a match for RRA %s,%d,%s in %s\n", rraB.Cf, rraB.PdpPerRow, rraB.Params.Xff, src)
+			k++
+			totalRecovered++
+			if oldIndex == 0 {
+				k = 1
+				startFrom = int(rrdA.RraStore[rraIdx].RowCount)
+			}
+		}
+
+		for i := int(rra.RowCount) - 1; i > int(rrdB.RraPtrStore[rraIdx]); i-- {
+			oldIndex := startFrom - k
+
+			if totalRecovered >= int(rrdA.RraStore[rraIdx].RowCount) {
+				break
+			}
+
+			for j := range rra.Row[i].Values {
+				if !math.IsNaN(rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]) {
+					rrdB.RraDataStore[rraIdx].Row[i].Values[j] = rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]
+				}
+			}
+			k++
+			totalRecovered++
+			if oldIndex == 0 {
+				k = 1
+				startFrom = int(rrdA.RraStore[rraIdx].RowCount)
+			}
 		}
 	}
 
 	info, err := os.Stat(dst)
-	err = rrdtool.Dump(rrdB, dst, info.Mode())
+	err = rrdtool.Restore(rrdB, dst, info.Mode())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write destination rrd file %s: %s\n", dst, err)
 	}
