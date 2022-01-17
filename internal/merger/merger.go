@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
+
 	"github.com/scaleway/rrdmerge/internal/rrd"
 	"github.com/scaleway/rrdmerge/internal/rrdtool"
 )
@@ -59,47 +60,45 @@ func (spec MergeSpec) String() string {
 }
 
 func (spec MergeSpec) DoMerge() error {
-	fmt.Println(spec)
 	if spec.MergeType == MergeFolder {
 		return spec.mergeFolder()
-	} else {
-		if spec.Common {
-			fmt.Println("Ignoring flag common because we're not merging folders")
-		}
-		return spec.mergeFile()
 	}
+
+	if spec.Common {
+		fmt.Println("Ignoring flag common because we're not merging folders")
+	}
+	return spec.mergeFile()
 }
 
 func (spec MergeSpec) mergeFolder() error {
-	var wgWalker sync.WaitGroup
 	var wgCopier sync.WaitGroup
 	var wgMerger sync.WaitGroup
-	files := make(chan string)
-	toCopy := make(chan filePair)
-	toMerge := make(chan filePair)
-
-	go func() {
-		defer close(files)
-
-		filepath.WalkDir(spec.RrdA, func(file string, d fs.DirEntry, err error) error {
-			if err == nil {
-				if file, err := spec.isValidFile(file); err == nil {
-					files <- file
-				} else {
-					fmt.Fprintf(os.Stderr, "Skipping file %s: %s\n", file, err)
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "Failed to read %s: %s\n", file, err)
-			}
-			return nil
-		})
-	}()
+	toCopy := make(chan *filePair, 100)
+	toMerge := make(chan *filePair, 100)
 
 	for i := 0; i < spec.Concurrency; i++ {
-		wgWalker.Add(1)
-		go func() error {
-			defer wgWalker.Done()
-			for fileA := range files {
+		wgCopier.Add(1)
+		go func(c chan *filePair) {
+			defer wgCopier.Done()
+			for pair := range c {
+				fmt.Fprintf(os.Stderr, "Copying %s to %s\n", pair.src, pair.dst)
+				copyFile(pair.src, pair.dst)
+			}
+		}(toCopy)
+
+		wgMerger.Add(1)
+		go func(c chan *filePair, daemonOpt string) {
+			defer wgMerger.Done()
+			for pair := range c {
+				fmt.Fprintf(os.Stderr, "Merging files %s and %s\n", pair.src, pair.dst)
+				merge(pair.src, pair.dst, daemonOpt)
+			}
+		}(toMerge, spec.DaemonOpt)
+	}
+
+	filepath.WalkDir(spec.RrdA, func(file string, d fs.DirEntry, err error) error {
+		if err == nil {
+			if fileA, err := spec.isValidFile(file); err == nil {
 				info, err := os.Stat(fileA)
 				if err != nil {
 					panic(err) // This should never happen since we've already stat'd the file before
@@ -107,48 +106,35 @@ func (spec MergeSpec) mergeFolder() error {
 					fileB := filepath.Join(spec.RrdB, info.Name())
 					if _, err := os.Stat(fileB); err == nil {
 						if fileB, err := spec.isValidFile(fileB); err == nil {
-							fmt.Fprintf(os.Stderr, "Merging files %s and %s\n", fileA, fileB)
-							toMerge <- filePair{src: fileA, dst: fileB}
+							toMerge <- &filePair{src: fileA, dst: fileB}
 						} else {
 							fmt.Fprintf(os.Stderr, "Not merging %s into %s because the target is not valid\n", fileA, fileB)
-							continue
+							return nil
 						}
 					} else { // Simple copy since the target does not exist
 						if !spec.Common {
-							toCopy <- filePair{src: fileA, dst: fileB}
+							toCopy <- &filePair{src: fileA, dst: fileB}
 						}
 					}
 				}
+			} else {
+				fmt.Fprintf(os.Stderr, "Skipping file %s: %s\n", file, err)
 			}
-			return nil
-		}()
-
-		wgCopier.Add(1)
-		go func() {
-			defer wgCopier.Done()
-			for pair := range toCopy {
-				copyFile(pair.src, pair.dst)
-			}
-		}()
-		wgMerger.Add(1)
-		go func() {
-			defer wgMerger.Done()
-			for pair := range toMerge {
-				merge(pair.src, pair.dst, spec)
-			}
-		}()
-	}
-
-	wgWalker.Wait()
+		} else {
+			fmt.Fprintf(os.Stderr, "Failed to read %s: %s\n", file, err)
+		}
+		return nil
+	})
 	close(toCopy)
 	close(toMerge)
+
 	wgCopier.Wait()
 	wgMerger.Wait()
 	return nil
 }
 
 func (spec MergeSpec) mergeFile() error {
-	merge(spec.RrdA, spec.RrdB, spec)
+	merge(spec.RrdA, spec.RrdB, spec.DaemonOpt)
 	return nil
 }
 
@@ -170,13 +156,11 @@ func (spec MergeSpec) isValidFile(file string) (string, error) {
 	}
 	if info.Mode().IsRegular() && (strings.HasSuffix(info.Name(), ".rrd") || spec.NoSkip) {
 		return file, nil
-	} else {
-		if info.IsDir() {
-			return file, errors.New("path is a directory")
-		} else {
-			return file, errors.New("file is non-regular or doesn't have a .rrd extension (try the noSkip flag?)")
-		}
 	}
+	if info.IsDir() {
+		return file, errors.New("path is a directory")
+	}
+	return file, errors.New("file is non-regular or doesn't have a .rrd extension (try the noSkip flag?)")
 }
 
 func loadRrd(path string) (*rrd.Rrd, error) {
@@ -188,9 +172,9 @@ func loadRrd(path string) (*rrd.Rrd, error) {
 	return rrdPtr, rrdPtr.Read(kaitai.NewStream(file), rrdPtr, rrdPtr)
 }
 
-func merge(src string, dst string, spec MergeSpec) {
-	if spec.DaemonOpt != "" {
-		err := rrdtool.Tune(dst, spec.DaemonOpt)
+func merge(src string, dst string, daemonOpt string) {
+	if daemonOpt != "" {
+		err := rrdtool.Flush(dst, daemonOpt)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to flush rrd file %s: %s\n", src, err)
 			return
@@ -213,6 +197,11 @@ func merge(src string, dst string, spec MergeSpec) {
 		return
 	}
 
+	if rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate == 0 {
+		fmt.Fprintf(os.Stderr, "Failed to merge rrd files %s and %s: they have the same last update value\n", src, dst)
+		return
+	}
+
 	// We merge into the newest rrd
 	if rrdA.LiveHead.LastUpdate > rrdB.LiveHead.LastUpdate {
 		rrdA, rrdB = rrdB, rrdA
@@ -225,15 +214,14 @@ func merge(src string, dst string, spec MergeSpec) {
 			fmt.Fprintf(os.Stderr, "Not merging data in RRA %d in %s because it has already rolled over\n", rraIdx, src)
 			continue
 		}
-
-		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate)/int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount) + 1
+		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount)
 
 		k := 0
 		startFrom := int(rrdA.RraPtrStore[rraIdx])
 		oldIndex := startFrom - k
 
 		totalRecovered := 0
-		for i := int(rrdB.RraPtrStore[rraIdx]) - timeShift; i >= 0; i-- {
+		for i := int(rrdB.RraPtrStore[rraIdx]) - 1 - timeShift; i >= 0; i-- {
 			oldIndex = startFrom - k
 
 			if totalRecovered >= int(rrdA.RraStore[rraIdx].RowCount) {
@@ -274,8 +262,7 @@ func merge(src string, dst string, spec MergeSpec) {
 		}
 	}
 
-	info, err := os.Stat(dst)
-	err = rrdtool.Restore(rrdB, dst, info.Mode())
+	err = rrdtool.Restore(rrdB, dst)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write destination rrd file %s: %s\n", dst, err)
 	}

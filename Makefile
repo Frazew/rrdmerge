@@ -11,7 +11,10 @@ fmt:
 	test -z $$(go list -f '{{.Dir}}' ./... | grep -v /vendor/ | xargs -L1 gofmt -l)
 
 lint:
-	go list ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
+	go list -f '{{.Dir}}' ./... | grep -v /vendor/ | xargs -L1 revive | grep -v '/rrd.go'
 
 build:
-	go build -o bin/cli ./cmd/rrdmerge
+	go build -tags rrdtool -o bin/rrdmerge ./cmd/rrdmerge
+	go build -tags librrd -o bin/rrdmerge_librrd ./cmd/rrdmerge
+	strip -s bin/rrdmerge
+	strip -s bin/rrdmerge_librrd

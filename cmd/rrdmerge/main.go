@@ -15,13 +15,12 @@ func pathToMergeType(path string) (merger.MergeType, fs.FileInfo, error) {
 	if file, err := os.Stat(path); err == nil {
 		if file.IsDir() {
 			return merger.MergeFolder, file, nil
-		} else {
-			return merger.MergeFile, file, nil
 		}
+		return merger.MergeFile, file, nil
 	} else if errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission) {
 		return -1, nil, err
 	} else {
-		return -1, nil, errors.New(fmt.Sprintf("Path %s could not be recognized", path))
+		return -1, nil, fmt.Errorf("Path %s could not be recognized", path)
 	}
 }
 
@@ -31,7 +30,7 @@ func main() {
 	common := flag.Bool("common", false, "Merge only files that are common to both sources when merging folders (optional)")
 	noSkip := flag.Bool("noSkip", false, "Do not skip files with an extension other that .rrd (optional)")
 	daemonOpt := flag.String("d", "", "Flush the rrd files with the given rrdcached daemon before merging (optional)")
-	concurrency := flag.Int("t", 8, "Run this many parallel merger jobs when processing a directory (optional)")
+	concurrency := flag.Int("t", 4, "Run this many parallel merger jobs when processing a directory (optional)")
 
 	flag.Parse()
 	if flag.Parsed() {
@@ -48,7 +47,7 @@ func main() {
 						fmt.Fprintf(os.Stderr, "Files a: %s and b: %s are the same\n", *rrdA, *rrdB)
 						os.Exit(1)
 					} else {
-						mergeSpec := merger.MergeSpec{
+						mergeSpec := &merger.MergeSpec{
 							RrdA:        *rrdA,
 							RrdB:        *rrdB,
 							MergeType:   mergeTypeA,
