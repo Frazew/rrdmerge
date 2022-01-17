@@ -15,7 +15,7 @@ import (
 )
 
 func Dump(file string) (*rrd.Rrd, error) {
-	rrdtoolCmd := exec.Command("rrdtool", "dump", file, "/dev/stdout")
+	rrdtoolCmd := exec.Command("rrdtool", "dump", file)
 	stdOut, err := rrdtoolCmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func Restore(rrdPtr *rrd.Rrd, file string) error {
 		return err
 	}
 
-	rrdtoolCmd := exec.Command("rrdtool", "restore", "-f", "/dev/stdin", file)
+	rrdtoolCmd := exec.Command("rrdtool", "restore", "-f", "-", file)
 	stdIn, err := rrdtoolCmd.StdinPipe()
 	if err != nil {
 		return err
