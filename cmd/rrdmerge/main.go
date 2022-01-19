@@ -31,6 +31,8 @@ func main() {
 	noSkip := flag.Bool("noSkip", false, "Do not skip files with an extension other that .rrd (optional)")
 	daemonOpt := flag.String("d", "", "Flush the rrd files with the given rrdcached daemon before merging (optional)")
 	concurrency := flag.Int("t", 4, "Run this many parallel merger jobs when processing a directory (optional)")
+	stripPath := flag.String("s", "", "Strip the given path when flushing over rrdcached, useful if connected over a TCP socket (optional)")
+	dryRun := flag.Bool("dry", false, "Do not perform any operation that would overwrite data on disk (optional)")
 
 	flag.Parse()
 	if flag.Parsed() {
@@ -38,6 +40,9 @@ func main() {
 			flag.PrintDefaults()
 			os.Exit(1)
 		} else {
+			if *dryRun {
+				fmt.Fprintf(os.Stderr, "Warning: dry run")
+			}
 			if mergeTypeA, fileInfoA, err := pathToMergeType(*rrdA); err == nil {
 				if mergeTypeB, fileInfoB, err := pathToMergeType(*rrdB); err == nil {
 					if mergeTypeA != mergeTypeB {
@@ -55,6 +60,8 @@ func main() {
 							Common:      *common,
 							NoSkip:      *noSkip,
 							DaemonOpt:   *daemonOpt,
+							StripPath:   *stripPath,
+							DryRun:      *dryRun,
 						}
 						start := time.Now()
 						mergeSpec.DoMerge()

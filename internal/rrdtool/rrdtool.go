@@ -7,9 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/scaleway/rrdmerge/internal/rrd"
 )
@@ -92,11 +90,6 @@ func Restore(rrdPtr *rrd.Rrd, file string) error {
 		_, err = stdIn.Write(xmlBytes)
 		err = stdIn.Close()
 	}()
-
-	f, err := os.Create("/tmp/out/" + filepath.Base(file))
-	f.Write(xmlBytes)
-	f.Sync()
-	f.Close()
 
 	if out, err := io.ReadAll(stdErr); err == nil {
 		if len(out) > 0 {

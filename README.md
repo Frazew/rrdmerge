@@ -47,6 +47,8 @@ The additional flags are:
 - `-noSkip` which allows merging files that do not end in ".rrd
 - `-t <count>` which specifies the number of copy and merge threads to spawn
 - `-d <socket>` which specifies the socket to connect to flush if using rrdcached
+- `-s <path>` which allows to specify a base path that should be stripped from B when using rrdcached (absolute paths in rrdcached are only allowed when using a unix domain socket)
+- `-dry` makes rrdmerge run without overwriting or copying any files. If `-d` is supplied, calls to rrdcached to flush will still be made
 
 ### Behavior
 
@@ -61,6 +63,11 @@ If supplied with folders instead of files, rrdmerge will copy over from A to B t
 - if the difference in time elapsed between A and B for a given RRA is greater than the row count, the RRA is kept intact (such a situation means that the old data we want to merge would already have been overwritten with newer data)
 - after merging, the in-memory RRD structures are serialized to XML before getting converted back into binary .rrd using `rrd_restore` or `rrdtool restore`
 
+A few notes:
+
+- rrdmerge assumes that the RRD files have the same RRAs (meaning that RRA #n in A has the same parameters as RRA #n in B)
+- additional RRAs are ignored: if A has more RRAs than B, they are not copied over. If B has more RRAs than A, they are left untouched
+
 ### Restore behavior
 
 Depending on the build variant (librrd or rrdtool), the behavior for restoring is not the same, which can have unexpected side effects:
@@ -72,10 +79,14 @@ Depending on the build variant (librrd or rrdtool), the behavior for restoring i
 
 ### LibreNMS migration
 
-Consider the following situation: a LibreNMS cluster is using rrdcached with distributed polling. Following a change in rrdcached, the daemon has to be restarted. Becaushttps://oss.oetiker.ch/rrdtool/pub/contrib/merge-rrd.tar.gze rrdcached is unavailable for a few seconds, the pollers begin caching in their local filesystem the RRD files. When rrdcached comes back up, a few minutes of monitoring data is therefore lost.
+Consider the following situation: a LibreNMS cluster is using rrdcached with distributed polling. Following a change in rrdcached, the daemon has to be restarted. Because rrdcached is unavailable for a few seconds, the pollers begin caching in their local filesystem the RRD files. When rrdcached comes back up, a few minutes of monitoring data is therefore lost.
 
 Using rrdmerge, we can retrieve these cached RRD files and merge them back into the main storage handled by rrdcached, therefore integrating back the data that would otherwise be lost.
 
 ## Testing
 
 Testing is not yet fully implemented as this requires sample (non-production/anonymous) RRD files.
+
+## License
+
+See LICENSE

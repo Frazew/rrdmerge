@@ -53,6 +53,8 @@ type MergeSpec struct {
 	Common      bool
 	NoSkip      bool
 	DaemonOpt   string
+	StripPath   string
+	DryRun      bool
 }
 
 func (spec MergeSpec) String() string {
@@ -78,22 +80,24 @@ func (spec MergeSpec) mergeFolder() error {
 
 	for i := 0; i < spec.Concurrency; i++ {
 		wgCopier.Add(1)
-		go func(c chan *filePair) {
+		go func(c chan *filePair, dryRun bool) {
 			defer wgCopier.Done()
 			for pair := range c {
 				fmt.Fprintf(os.Stderr, "Copying %s to %s\n", pair.src, pair.dst)
-				copyFile(pair.src, pair.dst)
+				if !dryRun {
+					copyFile(pair.src, pair.dst)
+				}
 			}
-		}(toCopy)
+		}(toCopy, spec.DryRun)
 
 		wgMerger.Add(1)
-		go func(c chan *filePair, daemonOpt string) {
+		go func(c chan *filePair, daemonOpt string, stripPath string, dryRun bool) {
 			defer wgMerger.Done()
 			for pair := range c {
 				fmt.Fprintf(os.Stderr, "Merging files %s and %s\n", pair.src, pair.dst)
-				merge(pair.src, pair.dst, daemonOpt)
+				merge(pair.src, pair.dst, daemonOpt, stripPath, dryRun)
 			}
-		}(toMerge, spec.DaemonOpt)
+		}(toMerge, spec.DaemonOpt, spec.StripPath, spec.DryRun)
 	}
 
 	filepath.WalkDir(spec.RrdA, func(file string, d fs.DirEntry, err error) error {
@@ -134,7 +138,7 @@ func (spec MergeSpec) mergeFolder() error {
 }
 
 func (spec MergeSpec) mergeFile() error {
-	merge(spec.RrdA, spec.RrdB, spec.DaemonOpt)
+	merge(spec.RrdA, spec.RrdB, spec.DaemonOpt, spec.StripPath, spec.DryRun)
 	return nil
 }
 
@@ -172,11 +176,11 @@ func loadRrd(path string) (*rrd.Rrd, error) {
 	return rrdPtr, rrdPtr.Read(kaitai.NewStream(file), rrdPtr, rrdPtr)
 }
 
-func merge(src string, dst string, daemonOpt string) {
+func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bool) {
 	if daemonOpt != "" {
-		err := rrdtool.Flush(dst, daemonOpt)
+		err := rrdtool.Flush(strings.Replace(dst, stripPath, "", 1), daemonOpt)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to flush rrd file %s: %s\n", src, err)
+			fmt.Fprintf(os.Stderr, "Failed to flush rrd file %s: %s\n", dst, err)
 			return
 		}
 	}
@@ -211,8 +215,10 @@ func merge(src string, dst string, daemonOpt string) {
 
 	for rraIdx, rra := range rrdB.RraDataStore {
 		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
-			fmt.Fprintf(os.Stderr, "Not merging data in RRA %d in %s because it has already rolled over\n", rraIdx, src)
 			continue
+		}
+		if rraIdx == int(rrdA.Header.RraCount)-1 {
+			break
 		}
 		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount)
 
@@ -262,9 +268,11 @@ func merge(src string, dst string, daemonOpt string) {
 		}
 	}
 
-	err = rrdtool.Restore(rrdB, dst)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write destination rrd file %s: %s\n", dst, err)
+	if !dryRun {
+		err = rrdtool.Restore(rrdB, dst)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write destination rrd file %s: %s\n", dst, err)
+		}
 	}
 }
 
