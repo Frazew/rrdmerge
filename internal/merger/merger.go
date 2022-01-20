@@ -202,7 +202,7 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 	}
 
 	if rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate == 0 {
-		fmt.Fprintf(os.Stderr, "Failed to merge rrd files %s and %s: they have the same last update value\n", src, dst)
+		fmt.Fprintf(os.Stderr, "Not merging rrd files %s and %s: they have the same last update value\n", src, dst)
 		return
 	}
 
@@ -217,7 +217,7 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
 			continue
 		}
-		if rraIdx == int(rrdA.Header.RraCount)-1 {
+		if rraIdx >= int(rrdA.Header.RraCount)-1 {
 			break
 		}
 		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount)
