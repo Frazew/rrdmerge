@@ -211,59 +211,43 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 		rrdA, rrdB = rrdB, rrdA
 	}
 
-	stepsDifference := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep)
+	lastUpdateDifference := int(rrdB.LiveHead.LastUpdate - rrdA.LiveHead.LastUpdate)
+	stepsDifference := (lastUpdateDifference + int(rrdA.Header.PdpStep) - 1) / int(rrdA.Header.PdpStep)
 
+	rrdAReader := rrd.Reader(rrdA)
+	rrdBReader := rrd.Reader(rrdB)
 	for rraIdx, rra := range rrdB.RraDataStore {
 		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
 			continue
 		}
-		if rraIdx >= int(rrdA.Header.RraCount)-1 {
+		if rraIdx > int(rrdA.Header.RraCount)-1 {
 			break
 		}
-		timeShift := int(rrdB.LiveHead.LastUpdate-rrdA.LiveHead.LastUpdate) / int(rrdA.Header.PdpStep*rrdA.RraStore[rraIdx].PdpCount)
 
-		k := 0
-		startFrom := int(rrdA.RraPtrStore[rraIdx])
-		oldIndex := startFrom - k
+		stepSize := int(rrdB.RraStore[rraIdx].PdpCount) * int(rrdA.Header.PdpStep)
+		rrdAStep := int(rrdA.LiveHead.LastUpdate) / stepSize
+		rrdBStep := int(rrdB.LiveHead.LastUpdate) / stepSize
+		timeShift := rrdBStep - rrdAStep
 
-		totalRecovered := 0
-		for i := int(rrdB.RraPtrStore[rraIdx]) - 1 - timeShift; i >= 0; i-- {
-			oldIndex = startFrom - k
+		rrdAReader.SelectRRA(rraIdx)
+		rrdBReader.SelectRRA(rraIdx)
+		rrdAReader.Seek(timeShift)
 
-			if totalRecovered >= int(rrdA.RraStore[rraIdx].RowCount) {
+		for {
+			rrdBRow, _, _, err := rrdBReader.Next()
+			if err != nil {
 				break
 			}
 
-			for j := range rra.Row[i].Values {
-				if !math.IsNaN(rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]) {
-					rrdB.RraDataStore[rraIdx].Row[i].Values[j] = rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]
+			rrdARow, _, _, err := rrdAReader.Next()
+
+			for j := range rrdBRow.Values {
+				if !math.IsNaN(rrdARow.Values[j]) {
+					rrdBRow.Values[j] = rrdARow.Values[j]
 				}
 			}
-			k++
-			totalRecovered++
-			if oldIndex == 0 {
-				k = 1
-				startFrom = int(rrdA.RraStore[rraIdx].RowCount)
-			}
-		}
-
-		for i := int(rra.RowCount) - 1; i > int(rrdB.RraPtrStore[rraIdx]); i-- {
-			oldIndex := startFrom - k
-
-			if totalRecovered >= int(rrdA.RraStore[rraIdx].RowCount) {
+			if err != nil {
 				break
-			}
-
-			for j := range rra.Row[i].Values {
-				if !math.IsNaN(rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]) {
-					rrdB.RraDataStore[rraIdx].Row[i].Values[j] = rrdA.RraDataStore[rraIdx].Row[oldIndex].Values[j]
-				}
-			}
-			k++
-			totalRecovered++
-			if oldIndex == 0 {
-				k = 1
-				startFrom = int(rrdA.RraStore[rraIdx].RowCount)
 			}
 		}
 	}
