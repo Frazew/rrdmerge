@@ -83,9 +83,15 @@ Consider the following situation: a LibreNMS cluster is using rrdcached with dis
 
 Using rrdmerge, we can retrieve these cached RRD files and merge them back into the main storage handled by rrdcached, therefore integrating back the data that would otherwise be lost.
 
+A script showing such an operation is provided in `scripts/librenms_merge.sh`.
+
 ## Testing
 
-Testing is not yet fully implemented as this requires sample (non-production/anonymous) RRD files.
+Testing is implemented using the standard Go testing system: `make test`.
+
+## Kaitai
+
+The RRD parser is implemented using [Kaitai](https://kaitai.io/). The `rrd.kty` file is used to generate `internal/rrd/rrd.go` using: `kaitai-struct-compiler -t go --outdir internal --go-package rrd rrd.kty`
 
 ## License
 
