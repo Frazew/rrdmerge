@@ -87,8 +87,8 @@ func Restore(rrdPtr *rrd.Rrd, file string) error {
 	}
 
 	go func() {
-		_, err = stdIn.Write(xmlBytes)
-		err = stdIn.Close()
+		stdIn.Write(xmlBytes)
+		stdIn.Close()
 	}()
 
 	if out, err := io.ReadAll(stdErr); err == nil {
@@ -99,7 +99,7 @@ func Restore(rrdPtr *rrd.Rrd, file string) error {
 		return err
 	}
 
-	rrdtoolCmd.Wait()
+	err = rrdtoolCmd.Wait()
 	if err != nil {
 		return err
 	}

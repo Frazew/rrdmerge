@@ -51,7 +51,8 @@ type xmlDs struct {
 	UnknownSec       string `xml:"unknown_sec"`
 }
 
-type xmlRrd struct {
+// XMLRrd is the representation of a RRD as used by rrdtool dump/restore
+type XMLRrd struct {
 	XMLName    xml.Name `xml:"rrd"`
 	Version    string   `xml:"version"`
 	Step       int      `xml:"step"`
@@ -60,7 +61,8 @@ type xmlRrd struct {
 	Rra        []xmlRra `xml:"rra"`
 }
 
-func FromRRDStruct(rrdPtr *Rrd) *xmlRrd {
+// FromRRDStruct creates a new XMLRrd from the given Rrd
+func FromRRDStruct(rrdPtr *Rrd) *XMLRrd {
 	dsSlice := make([]xmlDs, rrdPtr.Header.DsCount)
 	for dsIdx, ds := range rrdPtr.DsStore {
 		dsSlice[dsIdx] = xmlDs{
@@ -114,7 +116,7 @@ func FromRRDStruct(rrdPtr *Rrd) *xmlRrd {
 		}
 	}
 
-	return &xmlRrd{
+	return &XMLRrd{
 		Version:    "0003",
 		Step:       int(rrdPtr.Header.PdpStep),
 		Lastupdate: int64(rrdPtr.LiveHead.LastUpdate),
@@ -123,7 +125,8 @@ func FromRRDStruct(rrdPtr *Rrd) *xmlRrd {
 	}
 }
 
-func (xmlA xmlRrd) Equals(xmlB xmlRrd) error {
+// Equals compares two XMLRrd objects and returns an error if they are not equal
+func (xmlA XMLRrd) Equals(xmlB XMLRrd) error {
 	if !reflect.DeepEqual(xmlA.Lastupdate, xmlB.Lastupdate) {
 		return errors.New("Expected the last update value to be equal")
 	}
@@ -169,42 +172,42 @@ func (xmlA xmlRrd) Equals(xmlB xmlRrd) error {
 
 	for rraIdx, rra := range xmlB.Rra {
 		if !reflect.DeepEqual(rra.Params, xmlA.Rra[rraIdx].Params) {
-			return errors.New(fmt.Sprintf("Expected RRA %d to have the same params field", rraIdx))
+			return fmt.Errorf("Expected RRA %d to have the same params field", rraIdx)
 		}
 		if rra.Cf != xmlA.Rra[rraIdx].Cf {
-			return errors.New(fmt.Sprintf("Expected RRA %d to have the same CF", rraIdx))
+			return fmt.Errorf("Expected RRA %d to have the same CF", rraIdx)
 		}
 		if rra.PdpPerRow != xmlA.Rra[rraIdx].PdpPerRow {
-			return errors.New(fmt.Sprintf("Expected RRA %d to have the same number of pdp per row", rraIdx))
+			return fmt.Errorf("Expected RRA %d to have the same number of pdp per row", rraIdx)
 		}
 
 		if len(rra.CdpPrep.Ds) != len(xmlA.Rra[rraIdx].CdpPrep.Ds) {
-			return errors.New(fmt.Sprintf("Expected RRA %d to have the same number of DS", rraIdx))
+			return fmt.Errorf("Expected RRA %d to have the same number of DS", rraIdx)
 		}
 
 		for dsIdx, ds := range rra.CdpPrep.Ds {
 			if !floatEquals(ds.PrimaryValue, xmlA.Rra[rraIdx].CdpPrep.Ds[dsIdx].PrimaryValue) {
-				return errors.New(fmt.Sprintf("Expected RRA %d DS %d to have the same primary value", rraIdx, dsIdx))
+				return fmt.Errorf("Expected RRA %d DS %d to have the same primary value", rraIdx, dsIdx)
 			}
 			if !floatEquals(ds.SecondaryValue, xmlA.Rra[rraIdx].CdpPrep.Ds[dsIdx].SecondaryValue) {
-				return errors.New(fmt.Sprintf("Expected RRA %d DS %d to have the same secondary value", rraIdx, dsIdx))
+				return fmt.Errorf("Expected RRA %d DS %d to have the same secondary value", rraIdx, dsIdx)
 			}
 			if !floatEquals(ds.Value, xmlA.Rra[rraIdx].CdpPrep.Ds[dsIdx].Value) {
-				return errors.New(fmt.Sprintf("Expected RRA %d DS %d to have the same value", rraIdx, dsIdx))
+				return fmt.Errorf("Expected RRA %d DS %d to have the same value", rraIdx, dsIdx)
 			}
 			if ds.UnknownDatapoints != xmlA.Rra[rraIdx].CdpPrep.Ds[dsIdx].UnknownDatapoints {
-				return errors.New(fmt.Sprintf("Expected RRA %d DS %d to have the count of unknown datapoints", rraIdx, dsIdx))
+				return fmt.Errorf("Expected RRA %d DS %d to have the count of unknown datapoints", rraIdx, dsIdx)
 			}
 		}
 
 		if len(rra.Database.Rows) != len(xmlA.Rra[rraIdx].Database.Rows) {
-			return errors.New(fmt.Sprintf("Expected RRA %d to have the same row count", rraIdx))
+			return fmt.Errorf("Expected RRA %d to have the same row count", rraIdx)
 		}
 
 		for rowIdx, row := range rra.Database.Rows {
 			for vIdx, v := range row.V {
 				if !floatEquals(v, xmlA.Rra[rraIdx].Database.Rows[rowIdx].V[vIdx]) {
-					return errors.New(fmt.Sprintf("Expected RRA %d row %d to have the same values: %s != %s", rraIdx, rowIdx, v, xmlA.Rra[rraIdx].Database.Rows[rowIdx].V[vIdx]))
+					return fmt.Errorf("Expected RRA %d row %d to have the same values: %s != %s", rraIdx, rowIdx, v, xmlA.Rra[rraIdx].Database.Rows[rowIdx].V[vIdx])
 				}
 			}
 		}

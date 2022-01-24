@@ -27,8 +27,10 @@ type rrdMapping struct {
 	Xff string
 }
 
+// MergeType is an enum discriminating between file merge and folder merge
 type MergeType int
 
+// The actual enum values
 const (
 	MergeFolder MergeType = iota
 	MergeFile
@@ -45,6 +47,7 @@ func (mergeType MergeType) String() string {
 	}
 }
 
+// MergeSpec is the main internal input state containing the parameters
 type MergeSpec struct {
 	RrdA        string
 	RrdB        string
@@ -57,11 +60,12 @@ type MergeSpec struct {
 	DryRun      bool
 }
 
-func (spec MergeSpec) String() string {
+func (spec *MergeSpec) String() string {
 	return fmt.Sprintf("a: %s, b: %s, common: %t, type: %s", spec.RrdA, spec.RrdB, spec.Common, spec.MergeType)
 }
 
-func (spec MergeSpec) DoMerge() error {
+// DoMerge is the main entrypoint to start merging depending on the type
+func (spec *MergeSpec) DoMerge() error {
 	if spec.MergeType == MergeFolder {
 		return spec.mergeFolder()
 	}
@@ -72,7 +76,7 @@ func (spec MergeSpec) DoMerge() error {
 	return spec.mergeFile()
 }
 
-func (spec MergeSpec) mergeFolder() error {
+func (spec *MergeSpec) mergeFolder() error {
 	var wgCopier sync.WaitGroup
 	var wgMerger sync.WaitGroup
 	toCopy := make(chan *filePair, 100)
@@ -137,12 +141,12 @@ func (spec MergeSpec) mergeFolder() error {
 	return nil
 }
 
-func (spec MergeSpec) mergeFile() error {
+func (spec *MergeSpec) mergeFile() error {
 	merge(spec.RrdA, spec.RrdB, spec.DaemonOpt, spec.StripPath, spec.DryRun)
 	return nil
 }
 
-func (spec MergeSpec) isValidFile(file string) (string, error) {
+func (spec *MergeSpec) isValidFile(file string) (string, error) {
 	// Try to resolve symlinks
 	info, err := os.Stat(file)
 	if err != nil {
@@ -214,8 +218,8 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 	lastUpdateDifference := int(rrdB.LiveHead.LastUpdate - rrdA.LiveHead.LastUpdate)
 	stepsDifference := (lastUpdateDifference + int(rrdA.Header.PdpStep) - 1) / int(rrdA.Header.PdpStep)
 
-	rrdAReader := rrd.Reader(rrdA)
-	rrdBReader := rrd.Reader(rrdB)
+	rrdAReader := rrd.NewReader(rrdA)
+	rrdBReader := rrd.NewReader(rrdB)
 	for rraIdx, rra := range rrdB.RraDataStore {
 		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
 			continue
@@ -234,12 +238,12 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 		rrdAReader.Seek(timeShift)
 
 		for {
-			rrdBRow, _, _, err := rrdBReader.Next()
+			rrdBRow, err := rrdBReader.Next()
 			if err != nil {
 				break
 			}
 
-			rrdARow, _, _, err := rrdAReader.Next()
+			rrdARow, err := rrdAReader.Next()
 
 			for j := range rrdBRow.Values {
 				if !math.IsNaN(rrdARow.Values[j]) {

@@ -5,7 +5,8 @@ import (
 	"fmt"
 )
 
-type RRDReader struct {
+// Reader is a helper to navigate within the RRD structure
+type Reader struct {
 	rrdPtr   *Rrd
 	curRra   *Rrd_RraData
 	startIdx int
@@ -14,16 +15,18 @@ type RRDReader struct {
 	read     int
 }
 
-func Reader(rrdPtr *Rrd) *RRDReader {
-	reader := new(RRDReader)
+// NewReader creates a new Reader
+func NewReader(rrdPtr *Rrd) *Reader {
+	reader := new(Reader)
 	reader.rrdPtr = rrdPtr
 	reader.SelectRRA(0)
 	return reader
 }
 
-func (reader *RRDReader) SelectRRA(index int) error {
+// SelectRRA selects the RRA specified by the given index and initializes the Reader
+func (reader *Reader) SelectRRA(index int) error {
 	if index > int(reader.rrdPtr.Header.RraCount) {
-		return errors.New(fmt.Sprintf("RRA at index %d does not exist", index))
+		return fmt.Errorf("RRA at index %d does not exist", index)
 	}
 	reader.curRra = reader.rrdPtr.RraDataStore[index]
 	reader.startIdx = int(reader.rrdPtr.RraPtrStore[index]) + 1
@@ -33,9 +36,10 @@ func (reader *RRDReader) SelectRRA(index int) error {
 	return nil
 }
 
-func (reader *RRDReader) Next() (*Rrd_RraDataRow, int, int, error) {
+// Next returns the next entry in the currently selected RRA and updates the internal state accordingly
+func (reader *Reader) Next() (*Rrd_RraDataRow, error) {
 	if reader.headIdx == reader.endIdx {
-		return reader.curRra.Row[reader.headIdx], reader.read, reader.headIdx, errors.New("Reached end of RRA")
+		return reader.curRra.Row[reader.headIdx], errors.New("Reached end of RRA")
 	}
 
 	defer func() {
@@ -46,10 +50,11 @@ func (reader *RRDReader) Next() (*Rrd_RraDataRow, int, int, error) {
 			reader.headIdx = 0
 		}
 	}()
-	return reader.curRra.Row[reader.headIdx], reader.read, reader.headIdx, nil
+	return reader.curRra.Row[reader.headIdx], nil
 }
 
-func (reader *RRDReader) Seek(position int) error {
+// Seek moves the current reader pointer to the specified position in the RRA
+func (reader *Reader) Seek(position int) error {
 	if position >= int(reader.curRra.RowCount) {
 		return errors.New("Seeking at an index higer than the row count")
 	}

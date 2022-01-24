@@ -18,7 +18,7 @@ func TestFromRRDStruct(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to open fixture test_load.xml")
 	}
-	var xmlRrd xmlRrd
+	var xmlRrd XMLRrd
 	err = xml.Unmarshal(xmlABytes, &xmlRrd)
 	if err != nil {
 		t.Errorf("Expected err not to be nil, got: %w", err)
