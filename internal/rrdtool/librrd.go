@@ -7,7 +7,7 @@ package rrdtool
 // #include <stdio.h>
 // #include <stdlib.h>
 // #include <string.h>
-// #include "rrd.h"
+// #include <rrd.h>
 import "C"
 
 import (

@@ -27,8 +27,6 @@ Also note that this tool cannot work over rrdcached solely, it **needs** direct 
 
 ### Building / Installing
 
-Either use the pre-built binary within this repository `bin/rrdmerge` or build it yourself:
-
 ```shell
 go mod download
 make build
@@ -87,7 +85,7 @@ A script showing such an operation is provided in `scripts/librenms_merge.sh`.
 
 ## Testing
 
-Testing is implemented using the standard Go testing system: `make test`.
+Testing is implemented using the standard Go testing system. You can run all tests by calling `make test`.
 
 ## Kaitai
 
