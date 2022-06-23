@@ -101,13 +101,15 @@ types:
     seq:
       - id: cf
         type: str
-        size: 24
+        size: 20
         encoding: ascii
         terminator: 0
       - id: row_count
         type: u4
       - id: pdp_count
         type: u4
+      - doc: "padding"
+        size: 4
       - id: params
         type:
           switch-on: cf
@@ -130,7 +132,7 @@ types:
   unknown_params:
     seq:
       - id: params
-        type: u4
+        size: 8
         repeat: expr
         repeat-expr: 10
   live_head:

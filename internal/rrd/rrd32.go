@@ -1,5 +1,6 @@
 //go:build rrd32
 // +build rrd32
+
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
 package rrd
@@ -349,7 +350,7 @@ func (this *Rrd_LiveHead) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err e
 }
 
 type Rrd_UnknownParams struct {
-	Params  []uint32
+	Params  [][]byte
 	_io     *kaitai.Stream
 	_root   *Rrd
 	_parent *Rrd_RraDef
@@ -364,12 +365,13 @@ func (this *Rrd_UnknownParams) Read(io *kaitai.Stream, parent *Rrd_RraDef, root 
 	this._parent = parent
 	this._root = root
 
-	this.Params = make([]uint32, 10)
+	this.Params = make([][]byte, 10)
 	for i := range this.Params {
-		tmp30, err := this._io.ReadU4le()
+		tmp30, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
+		tmp30 = tmp30
 		this.Params[i] = tmp30
 	}
 	return err
@@ -651,13 +653,14 @@ func (this *Rrd_RraData) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err er
 }
 
 type Rrd_RraDef struct {
-	Cf       string
-	RowCount uint32
-	PdpCount uint32
-	Params   interface{}
-	_io      *kaitai.Stream
-	_root    *Rrd
-	_parent  *Rrd
+	Cf        string
+	RowCount  uint32
+	PdpCount  uint32
+	_unnamed3 []byte
+	Params    interface{}
+	_io       *kaitai.Stream
+	_root     *Rrd
+	_parent   *Rrd
 }
 
 func NewRrd_RraDef() *Rrd_RraDef {
@@ -669,7 +672,7 @@ func (this *Rrd_RraDef) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err err
 	this._parent = parent
 	this._root = root
 
-	tmp52, err := this._io.ReadBytes(int(24))
+	tmp52, err := this._io.ReadBytes(int(20))
 	if err != nil {
 		return err
 	}
@@ -685,60 +688,69 @@ func (this *Rrd_RraDef) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err err
 		return err
 	}
 	this.PdpCount = uint32(tmp54)
+	tmp55, err := this._io.ReadBytes(int(4))
+	if err != nil {
+		return err
+	}
+	tmp55 = tmp55
+	this._unnamed3 = tmp55
 	switch this.Cf {
 	case "DEVPREDICT":
-		tmp55 := NewRrd_UnknownParams()
-		err = tmp55.Read(this._io, this, this._root)
-		if err != nil {
-			return err
-		}
-		this.Params = tmp55
-	case "FAILURES":
 		tmp56 := NewRrd_UnknownParams()
 		err = tmp56.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp56
-	case "SEASONAL":
+	case "FAILURES":
 		tmp57 := NewRrd_UnknownParams()
 		err = tmp57.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp57
-	case "DEVSEASONAL":
+	case "SEASONAL":
 		tmp58 := NewRrd_UnknownParams()
 		err = tmp58.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp58
-	case "MHWPREDICT":
+	case "DEVSEASONAL":
 		tmp59 := NewRrd_UnknownParams()
 		err = tmp59.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp59
-	case "HWPREDICT":
+	case "MHWPREDICT":
 		tmp60 := NewRrd_UnknownParams()
 		err = tmp60.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp60
-	default:
-		tmp61 := NewRrd_RraParams()
+	case "HWPREDICT":
+		tmp61 := NewRrd_UnknownParams()
 		err = tmp61.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp61
+	default:
+		tmp62 := NewRrd_RraParams()
+		err = tmp62.Read(this._io, this, this._root)
+		if err != nil {
+			return err
+		}
+		this.Params = tmp62
 	}
 	return err
 }
 
+/**
+ * padding
+ */
 type Rrd_UnknownCdpPrep struct {
 	Unused  [][]byte
 	_io     *kaitai.Stream
@@ -757,12 +769,12 @@ func (this *Rrd_UnknownCdpPrep) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) 
 
 	this.Unused = make([][]byte, 10)
 	for i := range this.Unused {
-		tmp62, err := this._io.ReadBytes(int(8))
+		tmp63, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		tmp62 = tmp62
-		this.Unused[i] = tmp62
+		tmp63 = tmp63
+		this.Unused[i] = tmp63
 	}
 	return err
 }
