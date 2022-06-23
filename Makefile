@@ -16,7 +16,9 @@ lint:
 	go list -f '{{.Dir}}' ./... | grep -v /vendor/ | xargs -L1 revive | grep -v '/rrd.go'
 
 build:
-	go build -tags rrdtool -o bin/rrdmerge ./cmd/rrdmerge
-	go build -tags librrd -o bin/rrdmerge_librrd ./cmd/rrdmerge
+	go build -tags rrdtool,rrd64 -o bin/rrdmerge ./cmd/rrdmerge
+	go build -tags rrdtool,rrd32 -o bin/rrdmerge32 ./cmd/rrdmerge
+	go build -tags librrd,rrd64 -o bin/rrdmerge_librrd ./cmd/rrdmerge
+	go build -tags librrd,rrd32 -o bin/rrdmerge_librrd32 ./cmd/rrdmerge
 	strip -s bin/rrdmerge
 	strip -s bin/rrdmerge_librrd

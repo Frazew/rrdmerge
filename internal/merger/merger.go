@@ -221,14 +221,20 @@ func merge(src string, dst string, daemonOpt string, stripPath string, dryRun bo
 	rrdAReader := rrd.NewReader(rrdA)
 	rrdBReader := rrd.NewReader(rrdB)
 	for rraIdx, rra := range rrdB.RraDataStore {
-		if stepsDifference/int(rrdB.RraStore[rraIdx].PdpCount) > int(rra.RowCount) {
+		pdpCount := int(rrdB.RraStore[rraIdx].PdpCount)
+
+		// Having a pdp_cnt value == 0 seems to make no sense?
+		if pdpCount == 0 {
+			pdpCount = 1
+		}
+		if stepsDifference/pdpCount > int(rra.RowCount) {
 			continue
 		}
 		if rraIdx > int(rrdA.Header.RraCount)-1 {
 			break
 		}
 
-		stepSize := int(rrdB.RraStore[rraIdx].PdpCount) * int(rrdA.Header.PdpStep)
+		stepSize := pdpCount * int(rrdA.Header.PdpStep)
 		rrdAStep := int(rrdA.LiveHead.LastUpdate) / stepSize
 		rrdBStep := int(rrdB.LiveHead.LastUpdate) / stepSize
 		timeShift := rrdBStep - rrdAStep

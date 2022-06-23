@@ -1,12 +1,11 @@
-//go:build rrd64
-// +build rrd64
+//go:build rrd32
+// +build rrd32
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
 package rrd
 
 import (
 	"bytes"
-
 	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
 )
 
@@ -17,7 +16,7 @@ type Rrd struct {
 	LiveHead     *Rrd_LiveHead
 	PdpPrepStore []*Rrd_PdpPrep
 	CdpPrepStore []interface{}
-	RraPtrStore  []uint64
+	RraPtrStore  []uint32
 	RraDataStore []*Rrd_RraData
 	_io          *kaitai.Stream
 	_root        *Rrd
@@ -126,9 +125,9 @@ func (this *Rrd) Read(io *kaitai.Stream, parent interface{}, root *Rrd) (err err
 			this.CdpPrepStore[i] = tmp12
 		}
 	}
-	this.RraPtrStore = make([]uint64, this.Header.RraCount)
+	this.RraPtrStore = make([]uint32, this.Header.RraCount)
 	for i := range this.RraPtrStore {
-		tmp13, err := this._io.ReadU8le()
+		tmp13, err := this._io.ReadU4le()
 		if err != nil {
 			return err
 		}
@@ -147,9 +146,10 @@ func (this *Rrd) Read(io *kaitai.Stream, parent interface{}, root *Rrd) (err err
 }
 
 type Rrd_PdpPrepParams struct {
-	UnknownSecCount uint64
+	UnknownSecCount uint32
+	_unnamed1       []byte
 	CurrentValue    float64
-	Unused          []uint64
+	Unused          [][]byte
 	_io             *kaitai.Stream
 	_root           *Rrd
 	_parent         *Rrd_PdpPrep
@@ -164,30 +164,40 @@ func (this *Rrd_PdpPrepParams) Read(io *kaitai.Stream, parent *Rrd_PdpPrep, root
 	this._parent = parent
 	this._root = root
 
-	tmp15, err := this._io.ReadU8le()
+	tmp15, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.UnknownSecCount = uint64(tmp15)
-	tmp16, err := this._io.ReadF8le()
+	this.UnknownSecCount = uint32(tmp15)
+	tmp16, err := this._io.ReadBytes(int(4))
 	if err != nil {
 		return err
 	}
-	this.CurrentValue = float64(tmp16)
-	this.Unused = make([]uint64, (10 - 2))
+	tmp16 = tmp16
+	this._unnamed1 = tmp16
+	tmp17, err := this._io.ReadF8le()
+	if err != nil {
+		return err
+	}
+	this.CurrentValue = float64(tmp17)
+	this.Unused = make([][]byte, (10 - 2))
 	for i := range this.Unused {
-		tmp17, err := this._io.ReadU8le()
+		tmp18, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Unused[i] = tmp17
+		tmp18 = tmp18
+		this.Unused[i] = tmp18
 	}
 	return err
 }
 
+/**
+ * padding
+ */
 type Rrd_RraParams struct {
 	Xff     float64
-	Unused  []uint64
+	Unused  [][]byte
 	_io     *kaitai.Stream
 	_root   *Rrd
 	_parent *Rrd_RraDef
@@ -202,26 +212,28 @@ func (this *Rrd_RraParams) Read(io *kaitai.Stream, parent *Rrd_RraDef, root *Rrd
 	this._parent = parent
 	this._root = root
 
-	tmp18, err := this._io.ReadF8le()
+	tmp19, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.Xff = float64(tmp18)
-	this.Unused = make([]uint64, (10 - 1))
+	this.Xff = float64(tmp19)
+	this.Unused = make([][]byte, (10 - 1))
 	for i := range this.Unused {
-		tmp19, err := this._io.ReadU8le()
+		tmp20, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Unused[i] = tmp19
+		tmp20 = tmp20
+		this.Unused[i] = tmp20
 	}
 	return err
 }
 
 type Rrd_CdpPrepParams struct {
 	Value           float64
-	UnknownPdpCount uint64
-	Unused          []uint64
+	UnknownPdpCount uint32
+	Unused          [][]byte
+	_unnamed3       []byte
 	PrimaryValue    float64
 	SecondaryValue  float64
 	_io             *kaitai.Stream
@@ -238,37 +250,47 @@ func (this *Rrd_CdpPrepParams) Read(io *kaitai.Stream, parent *Rrd_CdpPrep, root
 	this._parent = parent
 	this._root = root
 
-	tmp20, err := this._io.ReadF8le()
+	tmp21, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.Value = float64(tmp20)
-	tmp21, err := this._io.ReadU8le()
+	this.Value = float64(tmp21)
+	tmp22, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.UnknownPdpCount = uint64(tmp21)
-	this.Unused = make([]uint64, (10 - 4))
+	this.UnknownPdpCount = uint32(tmp22)
+	this.Unused = make([][]byte, (10 - 4))
 	for i := range this.Unused {
-		tmp22, err := this._io.ReadU8le()
+		tmp23, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Unused[i] = tmp22
+		tmp23 = tmp23
+		this.Unused[i] = tmp23
 	}
-	tmp23, err := this._io.ReadF8le()
+	tmp24, err := this._io.ReadBytes(int(4))
 	if err != nil {
 		return err
 	}
-	this.PrimaryValue = float64(tmp23)
-	tmp24, err := this._io.ReadF8le()
+	tmp24 = tmp24
+	this._unnamed3 = tmp24
+	tmp25, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.SecondaryValue = float64(tmp24)
+	this.PrimaryValue = float64(tmp25)
+	tmp26, err := this._io.ReadF8le()
+	if err != nil {
+		return err
+	}
+	this.SecondaryValue = float64(tmp26)
 	return err
 }
 
+/**
+ * padding
+ */
 type Rrd_RraDataRow struct {
 	Values  []float64
 	_io     *kaitai.Stream
@@ -287,18 +309,18 @@ func (this *Rrd_RraDataRow) Read(io *kaitai.Stream, parent *Rrd_RraData, root *R
 
 	this.Values = make([]float64, this._root.Header.DsCount)
 	for i := range this.Values {
-		tmp25, err := this._io.ReadF8le()
+		tmp27, err := this._io.ReadF8le()
 		if err != nil {
 			return err
 		}
-		this.Values[i] = tmp25
+		this.Values[i] = tmp27
 	}
 	return err
 }
 
 type Rrd_LiveHead struct {
-	LastUpdate     uint64
-	LastUpdateUsec uint64
+	LastUpdate     uint32
+	LastUpdateUsec uint32
 	_io            *kaitai.Stream
 	_root          *Rrd
 	_parent        *Rrd
@@ -313,21 +335,21 @@ func (this *Rrd_LiveHead) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err e
 	this._parent = parent
 	this._root = root
 
-	tmp26, err := this._io.ReadU8le()
+	tmp28, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.LastUpdate = uint64(tmp26)
-	tmp27, err := this._io.ReadU8le()
+	this.LastUpdate = uint32(tmp28)
+	tmp29, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.LastUpdateUsec = uint64(tmp27)
+	this.LastUpdateUsec = uint32(tmp29)
 	return err
 }
 
 type Rrd_UnknownParams struct {
-	Params  []uint64
+	Params  []uint32
 	_io     *kaitai.Stream
 	_root   *Rrd
 	_parent *Rrd_RraDef
@@ -342,13 +364,13 @@ func (this *Rrd_UnknownParams) Read(io *kaitai.Stream, parent *Rrd_RraDef, root 
 	this._parent = parent
 	this._root = root
 
-	this.Params = make([]uint64, 10)
+	this.Params = make([]uint32, 10)
 	for i := range this.Params {
-		tmp28, err := this._io.ReadU8le()
+		tmp30, err := this._io.ReadU4le()
 		if err != nil {
 			return err
 		}
-		this.Params[i] = tmp28
+		this.Params[i] = tmp30
 	}
 	return err
 }
@@ -370,18 +392,18 @@ func (this *Rrd_PdpPrep) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err er
 	this._parent = parent
 	this._root = root
 
-	tmp29, err := this._io.ReadBytes(int(32))
+	tmp31, err := this._io.ReadBytes(int(32))
 	if err != nil {
 		return err
 	}
-	tmp29 = kaitai.BytesTerminate(tmp29, 0, false)
-	this.LastDsReading = string(tmp29)
-	tmp30 := NewRrd_PdpPrepParams()
-	err = tmp30.Read(this._io, this, this._root)
+	tmp31 = kaitai.BytesTerminate(tmp31, 0, false)
+	this.LastDsReading = string(tmp31)
+	tmp32 := NewRrd_PdpPrepParams()
+	err = tmp32.Read(this._io, this, this._root)
 	if err != nil {
 		return err
 	}
-	this.Params = tmp30
+	this.Params = tmp32
 	return err
 }
 
@@ -403,12 +425,12 @@ func (this *Rrd_CdpPrep) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err er
 
 	this.Params = make([]*Rrd_CdpPrepParams, this._root.Header.DsCount)
 	for i := range this.Params {
-		tmp31 := NewRrd_CdpPrepParams()
-		err = tmp31.Read(this._io, this, this._root)
+		tmp33 := NewRrd_CdpPrepParams()
+		err = tmp33.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
-		this.Params[i] = tmp31
+		this.Params[i] = tmp33
 	}
 	return err
 }
@@ -431,24 +453,24 @@ func (this *Rrd_DsDef) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err erro
 	this._parent = parent
 	this._root = root
 
-	tmp32, err := this._io.ReadBytes(int(20))
+	tmp34, err := this._io.ReadBytes(int(20))
 	if err != nil {
 		return err
 	}
-	tmp32 = kaitai.BytesTerminate(tmp32, 0, false)
-	this.Name = string(tmp32)
-	tmp33, err := this._io.ReadBytes(int(20))
+	tmp34 = kaitai.BytesTerminate(tmp34, 0, false)
+	this.Name = string(tmp34)
+	tmp35, err := this._io.ReadBytes(int(20))
 	if err != nil {
 		return err
 	}
-	tmp33 = kaitai.BytesTerminate(tmp33, 0, false)
-	this.Datasource = string(tmp33)
-	tmp34 := NewRrd_DsParams()
-	err = tmp34.Read(this._io, this, this._root)
+	tmp35 = kaitai.BytesTerminate(tmp35, 0, false)
+	this.Datasource = string(tmp35)
+	tmp36 := NewRrd_DsParams()
+	err = tmp36.Read(this._io, this, this._root)
 	if err != nil {
 		return err
 	}
-	this.Params = tmp34
+	this.Params = tmp36
 	return err
 }
 
@@ -457,10 +479,11 @@ type Rrd_Header struct {
 	Version     string
 	Padding     []byte
 	Floatcookie float64
-	DsCount     uint64
-	RraCount    uint64
-	PdpStep     uint64
-	Params      []uint64
+	DsCount     uint32
+	RraCount    uint32
+	PdpStep     uint32
+	_unnamed7   []byte
+	Params      [][]byte
 	_io         *kaitai.Stream
 	_root       *Rrd
 	_parent     *Rrd
@@ -475,67 +498,78 @@ func (this *Rrd_Header) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err err
 	this._parent = parent
 	this._root = root
 
-	tmp35, err := this._io.ReadBytes(int(4))
-	if err != nil {
-		return err
-	}
-	tmp35 = tmp35
-	this.Magic = tmp35
-	if !(bytes.Equal(this.Magic, []uint8{82, 82, 68, 0})) {
-		return kaitai.NewValidationNotEqualError([]uint8{82, 82, 68, 0}, this.Magic, this._io, "/types/header/seq/0")
-	}
-	tmp36, err := this._io.ReadBytes(int(4))
-	if err != nil {
-		return err
-	}
-	tmp36 = tmp36
-	this.Version = string(tmp36)
-	tmp37, err := this._io.ReadBytes(int(8))
+	tmp37, err := this._io.ReadBytes(int(4))
 	if err != nil {
 		return err
 	}
 	tmp37 = tmp37
-	this.Padding = tmp37
-	tmp38, err := this._io.ReadF8le()
+	this.Magic = tmp37
+	if !(bytes.Equal(this.Magic, []uint8{82, 82, 68, 0})) {
+		return kaitai.NewValidationNotEqualError([]uint8{82, 82, 68, 0}, this.Magic, this._io, "/types/header/seq/0")
+	}
+	tmp38, err := this._io.ReadBytes(int(4))
 	if err != nil {
 		return err
 	}
-	this.Floatcookie = float64(tmp38)
-	tmp39, err := this._io.ReadU8le()
+	tmp38 = tmp38
+	this.Version = string(tmp38)
+	tmp39, err := this._io.ReadBytes(int(8))
 	if err != nil {
 		return err
 	}
-	this.DsCount = uint64(tmp39)
-	tmp40, err := this._io.ReadU8le()
+	tmp39 = tmp39
+	this.Padding = tmp39
+	tmp40, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.RraCount = uint64(tmp40)
-	tmp41, err := this._io.ReadU8le()
+	this.Floatcookie = float64(tmp40)
+	tmp41, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.PdpStep = uint64(tmp41)
-	this.Params = make([]uint64, 10)
+	this.DsCount = uint32(tmp41)
+	tmp42, err := this._io.ReadU4le()
+	if err != nil {
+		return err
+	}
+	this.RraCount = uint32(tmp42)
+	tmp43, err := this._io.ReadU4le()
+	if err != nil {
+		return err
+	}
+	this.PdpStep = uint32(tmp43)
+	tmp44, err := this._io.ReadBytes(int(4))
+	if err != nil {
+		return err
+	}
+	tmp44 = tmp44
+	this._unnamed7 = tmp44
+	this.Params = make([][]byte, 10)
 	for i := range this.Params {
-		tmp42, err := this._io.ReadU8le()
+		tmp45, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Params[i] = tmp42
+		tmp45 = tmp45
+		this.Params[i] = tmp45
 	}
 	return err
 }
 
 /**
+ * padding
+ */
+
+/**
  * unused
  */
 type Rrd_DsParams struct {
-	MinHeartbeatCount uint64
+	MinHeartbeatCount uint32
 	MinVal            float64
 	MaxVal            float64
-	Cdef              uint64
-	Unused            []uint64
+	Cdef              uint32
+	Unused            [][]byte
 	_io               *kaitai.Stream
 	_root             *Rrd
 	_parent           *Rrd_DsDef
@@ -550,33 +584,34 @@ func (this *Rrd_DsParams) Read(io *kaitai.Stream, parent *Rrd_DsDef, root *Rrd) 
 	this._parent = parent
 	this._root = root
 
-	tmp43, err := this._io.ReadU8le()
+	tmp46, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.MinHeartbeatCount = uint64(tmp43)
-	tmp44, err := this._io.ReadF8le()
+	this.MinHeartbeatCount = uint32(tmp46)
+	tmp47, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.MinVal = float64(tmp44)
-	tmp45, err := this._io.ReadF8le()
+	this.MinVal = float64(tmp47)
+	tmp48, err := this._io.ReadF8le()
 	if err != nil {
 		return err
 	}
-	this.MaxVal = float64(tmp45)
-	tmp46, err := this._io.ReadU8le()
+	this.MaxVal = float64(tmp48)
+	tmp49, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.Cdef = uint64(tmp46)
-	this.Unused = make([]uint64, (10 - 4))
+	this.Cdef = uint32(tmp49)
+	this.Unused = make([][]byte, (10 - 3))
 	for i := range this.Unused {
-		tmp47, err := this._io.ReadU8le()
+		tmp50, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Unused[i] = tmp47
+		tmp50 = tmp50
+		this.Unused[i] = tmp50
 	}
 	return err
 }
@@ -586,13 +621,13 @@ func (this *Rrd_DsParams) Read(io *kaitai.Stream, parent *Rrd_DsDef, root *Rrd) 
  */
 type Rrd_RraData struct {
 	Row      []*Rrd_RraDataRow
-	RowCount uint64
+	RowCount uint32
 	_io      *kaitai.Stream
 	_root    *Rrd
 	_parent  *Rrd
 }
 
-func NewRrd_RraData(rowCount uint64) *Rrd_RraData {
+func NewRrd_RraData(rowCount uint32) *Rrd_RraData {
 	return &Rrd_RraData{
 		RowCount: rowCount,
 	}
@@ -605,20 +640,20 @@ func (this *Rrd_RraData) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err er
 
 	this.Row = make([]*Rrd_RraDataRow, this.RowCount)
 	for i := range this.Row {
-		tmp48 := NewRrd_RraDataRow()
-		err = tmp48.Read(this._io, this, this._root)
+		tmp51 := NewRrd_RraDataRow()
+		err = tmp51.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
-		this.Row[i] = tmp48
+		this.Row[i] = tmp51
 	}
 	return err
 }
 
 type Rrd_RraDef struct {
 	Cf       string
-	RowCount uint64
-	PdpCount uint64
+	RowCount uint32
+	PdpCount uint32
 	Params   interface{}
 	_io      *kaitai.Stream
 	_root    *Rrd
@@ -634,78 +669,78 @@ func (this *Rrd_RraDef) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) (err err
 	this._parent = parent
 	this._root = root
 
-	tmp49, err := this._io.ReadBytes(int(24))
+	tmp52, err := this._io.ReadBytes(int(24))
 	if err != nil {
 		return err
 	}
-	tmp49 = kaitai.BytesTerminate(tmp49, 0, false)
-	this.Cf = string(tmp49)
-	tmp50, err := this._io.ReadU8le()
+	tmp52 = kaitai.BytesTerminate(tmp52, 0, false)
+	this.Cf = string(tmp52)
+	tmp53, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.RowCount = uint64(tmp50)
-	tmp51, err := this._io.ReadU8le()
+	this.RowCount = uint32(tmp53)
+	tmp54, err := this._io.ReadU4le()
 	if err != nil {
 		return err
 	}
-	this.PdpCount = uint64(tmp51)
+	this.PdpCount = uint32(tmp54)
 	switch this.Cf {
 	case "DEVPREDICT":
-		tmp52 := NewRrd_UnknownParams()
-		err = tmp52.Read(this._io, this, this._root)
-		if err != nil {
-			return err
-		}
-		this.Params = tmp52
-	case "FAILURES":
-		tmp53 := NewRrd_UnknownParams()
-		err = tmp53.Read(this._io, this, this._root)
-		if err != nil {
-			return err
-		}
-		this.Params = tmp53
-	case "SEASONAL":
-		tmp54 := NewRrd_UnknownParams()
-		err = tmp54.Read(this._io, this, this._root)
-		if err != nil {
-			return err
-		}
-		this.Params = tmp54
-	case "DEVSEASONAL":
 		tmp55 := NewRrd_UnknownParams()
 		err = tmp55.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp55
-	case "MHWPREDICT":
+	case "FAILURES":
 		tmp56 := NewRrd_UnknownParams()
 		err = tmp56.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp56
-	case "HWPREDICT":
+	case "SEASONAL":
 		tmp57 := NewRrd_UnknownParams()
 		err = tmp57.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp57
-	default:
-		tmp58 := NewRrd_RraParams()
+	case "DEVSEASONAL":
+		tmp58 := NewRrd_UnknownParams()
 		err = tmp58.Read(this._io, this, this._root)
 		if err != nil {
 			return err
 		}
 		this.Params = tmp58
+	case "MHWPREDICT":
+		tmp59 := NewRrd_UnknownParams()
+		err = tmp59.Read(this._io, this, this._root)
+		if err != nil {
+			return err
+		}
+		this.Params = tmp59
+	case "HWPREDICT":
+		tmp60 := NewRrd_UnknownParams()
+		err = tmp60.Read(this._io, this, this._root)
+		if err != nil {
+			return err
+		}
+		this.Params = tmp60
+	default:
+		tmp61 := NewRrd_RraParams()
+		err = tmp61.Read(this._io, this, this._root)
+		if err != nil {
+			return err
+		}
+		this.Params = tmp61
 	}
 	return err
 }
 
 type Rrd_UnknownCdpPrep struct {
-	Unused  []uint64
+	Unused  [][]byte
 	_io     *kaitai.Stream
 	_root   *Rrd
 	_parent *Rrd
@@ -720,13 +755,14 @@ func (this *Rrd_UnknownCdpPrep) Read(io *kaitai.Stream, parent *Rrd, root *Rrd) 
 	this._parent = parent
 	this._root = root
 
-	this.Unused = make([]uint64, 10)
+	this.Unused = make([][]byte, 10)
 	for i := range this.Unused {
-		tmp59, err := this._io.ReadU8le()
+		tmp62, err := this._io.ReadBytes(int(8))
 		if err != nil {
 			return err
 		}
-		this.Unused[i] = tmp59
+		tmp62 = tmp62
+		this.Unused[i] = tmp62
 	}
 	return err
 }

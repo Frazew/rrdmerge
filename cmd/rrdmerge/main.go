@@ -41,7 +41,7 @@ func main() {
 			os.Exit(1)
 		} else {
 			if *dryRun {
-				fmt.Fprintf(os.Stderr, "Warning: dry run")
+				fmt.Fprintf(os.Stderr, "Warning: dry run\n")
 			}
 			if mergeTypeA, fileInfoA, err := pathToMergeType(*rrdA); err == nil {
 				if mergeTypeB, fileInfoB, err := pathToMergeType(*rrdB); err == nil {
